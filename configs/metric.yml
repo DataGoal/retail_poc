@@ -1,0 +1,387 @@
+###############################################################################
+# Databricks Metric View — Retail Sales
+# Covers: Joins, Window Measures, Semantic Metadata, Composability
+# Spec version 1.1 (required for semantic metadata features)
+###############################################################################
+
+version: 1.1
+
+# ── Source (fact table) ─────────────────────────────────────────────────────
+source: '`databricks-poc-updated`.nike_poc.fact_sales_transactions'
+filter: transaction_date_sk IS NOT NULL
+comment: >
+  Core retail sales metric view built on the fact_sales_transactions table.
+  Demonstrates star-schema joins, window measures, composability via MEASURE(),
+  and rich semantic metadata (display_name, synonyms, format).
+
+# ── Joins (star schema — fact → dimensions) ─────────────────────────────────
+joins:
+
+  - name: store
+    source: '`databricks-poc-updated`.nike_poc.dim_store'
+    'on': source.store_sk = store.store_sk
+
+  - name: product
+    source: '`databricks-poc-updated`.nike_poc.dim_product'
+    'on': source.product_sk = product.product_sk
+
+# ── Dimensions ──────────────────────────────────────────────────────────────
+dimensions:
+
+  # --- Date dimension (derived from fact) ---
+  - name: transaction_date
+    expr: "TO_DATE(CAST(transaction_date_sk AS STRING), 'yyyyMMdd')"
+    comment: Date of the sales transaction
+    display_name: Transaction Date
+    format:
+      type: date
+      date_format: year_month_day
+      leading_zeros: true
+    synonyms:
+      - sale date
+      - order date
+
+  - name: transaction_year
+    expr: "DATE_TRUNC('year', TO_DATE(CAST(transaction_date_sk AS STRING), 'yyyyMMdd'))"
+    comment: Year of the transaction (used for YTD window)
+    display_name: Transaction Year
+
+  # --- Store dimensions (from join) ---
+  - name: store_name
+    expr: store.store_name
+    display_name: Store Name
+    synonyms:
+      - store
+      - location name
+
+  - name: region_name
+    expr: store.region_name
+    display_name: Region
+    synonyms:
+      - region
+      - geography
+
+  - name: country_name
+    expr: store.country_name
+    display_name: Country
+
+  - name: store_format
+    expr: store.store_format
+    display_name: Store Format
+    synonyms:
+      - format
+
+  # --- Product dimensions (from join) ---
+  - name: division_name
+    expr: product.division_name
+    display_name: Division
+    synonyms:
+      - business unit
+
+  - name: category_name
+    expr: product.category_name
+    display_name: Product Category
+    synonyms:
+      - category
+
+  - name: product_name
+    expr: product.product_name
+    display_name: Product Name
+    synonyms:
+      - item
+      - product
+
+  - name: gender_target
+    expr: product.gender_target
+    display_name: Gender Target
+
+  # --- Derived / CASE dimension (composability on dimensions) ---
+  - name: revenue_tier
+    expr: |
+      CASE
+        WHEN net_revenue_usd > 500 THEN 'High-Value'
+        WHEN net_revenue_usd > 100 THEN 'Mid-Value'
+        ELSE 'Low-Value'
+      END
+    comment: Revenue tier classification per transaction line
+    display_name: Revenue Tier
+    synonyms:
+      - value segment
+      - transaction tier
+
+# ── Measures ────────────────────────────────────────────────────────────────
+measures:
+
+  # ========== ATOMIC MEASURES ==========
+
+  - name: total_net_revenue
+    expr: SUM(net_revenue_usd)
+    comment: Total net revenue in USD across all transactions
+    display_name: Total Net Revenue
+    format:
+      type: currency
+      currency_code: USD
+      decimal_places:
+        type: exact
+        places: 2
+      abbreviation: compact
+    synonyms:
+      - revenue
+      - net sales
+      - total sales
+
+  - name: total_gross_revenue
+    expr: SUM(gross_revenue)
+    comment: Total gross revenue before discounts
+    display_name: Total Gross Revenue
+    format:
+      type: currency
+      currency_code: USD
+      decimal_places:
+        type: exact
+        places: 2
+    synonyms:
+      - gross sales
+
+  - name: total_cogs
+    expr: SUM(cost_of_goods_sold)
+    comment: Total cost of goods sold
+    display_name: Total COGS
+    format:
+      type: currency
+      currency_code: USD
+      decimal_places:
+        type: exact
+        places: 2
+    synonyms:
+      - cost
+      - cogs
+
+  - name: total_discount
+    expr: SUM(discount_amount)
+    comment: Total discount amount given
+    display_name: Total Discount
+    format:
+      type: currency
+      currency_code: USD
+      decimal_places:
+        type: exact
+        places: 2
+
+  - name: total_quantity
+    expr: SUM(quantity_sold)
+    comment: Total units sold
+    display_name: Total Units Sold
+    format:
+      type: number
+      decimal_places:
+        type: all
+      hide_group_separator: false
+    synonyms:
+      - units
+      - quantity
+
+  - name: transaction_count
+    expr: COUNT(DISTINCT transaction_id)
+    comment: Distinct number of transactions
+    display_name: Transaction Count
+    format:
+      type: number
+      decimal_places:
+        type: all
+    synonyms:
+      - number of transactions
+      - order count
+
+  - name: unique_customers
+    expr: COUNT(DISTINCT customer_sk)
+    comment: Distinct customer count
+    display_name: Unique Customers
+    format:
+      type: number
+      decimal_places:
+        type: all
+    synonyms:
+      - customer count
+
+  # --- Atomic measure with FILTER clause (conditional) ---
+  - name: return_transactions
+    expr: COUNT(DISTINCT transaction_id) FILTER (WHERE return_flag = 'Y')
+    comment: Transactions that were returns
+    display_name: Return Transactions
+
+  # ========== COMPOSED MEASURES (Composability via MEASURE()) ==========
+
+  - name: gross_margin
+    expr: MEASURE(total_net_revenue) - MEASURE(total_cogs)
+    comment: Gross margin = net revenue minus COGS
+    display_name: Gross Margin
+    format:
+      type: currency
+      currency_code: USD
+      decimal_places:
+        type: exact
+        places: 2
+    synonyms:
+      - profit
+      - margin
+
+  - name: gross_margin_pct
+    expr: (MEASURE(total_net_revenue) - MEASURE(total_cogs)) / MEASURE(total_net_revenue) * 100
+    comment: Gross margin as a percentage of net revenue
+    display_name: Gross Margin %
+    format:
+      type: percentage
+      decimal_places:
+        type: exact
+        places: 2
+    synonyms:
+      - margin percent
+      - profitability
+
+  - name: avg_order_value
+    expr: MEASURE(total_net_revenue) / MEASURE(transaction_count)
+    comment: Average revenue per transaction
+    display_name: Avg Order Value
+    format:
+      type: currency
+      currency_code: USD
+      decimal_places:
+        type: exact
+        places: 2
+    synonyms:
+      - aov
+      - average basket
+
+  - name: avg_selling_price
+    expr: MEASURE(total_net_revenue) / MEASURE(total_quantity)
+    comment: Average selling price per unit
+    display_name: Avg Selling Price
+    format:
+      type: currency
+      currency_code: USD
+      decimal_places:
+        type: exact
+        places: 2
+    synonyms:
+      - asp
+
+  - name: discount_rate
+    expr: MEASURE(total_discount) / MEASURE(total_gross_revenue)
+    comment: Discount as a share of gross revenue
+    display_name: Discount Rate
+    format:
+      type: percentage
+      decimal_places:
+        type: exact
+        places: 2
+
+  - name: return_rate
+    expr: MEASURE(return_transactions) / MEASURE(transaction_count)
+    comment: Share of transactions that are returns
+    display_name: Return Rate
+    format:
+      type: percentage
+      decimal_places:
+        type: exact
+        places: 2
+    synonyms:
+      - refund rate
+
+  # ========== WINDOW MEASURES ==========
+
+  # --- Trailing 7-day revenue ---
+  - name: trailing_7d_revenue
+    expr: SUM(net_revenue_usd)
+    comment: Rolling 7-day trailing net revenue (excludes current day)
+    display_name: Trailing 7-Day Revenue
+    format:
+      type: currency
+      currency_code: USD
+      decimal_places:
+        type: exact
+        places: 2
+    window:
+      - order: transaction_date
+        range: trailing 7 day
+        semiadditive: last
+
+  # --- Trailing 7-day unique customers ---
+  - name: trailing_7d_customers
+    expr: COUNT(DISTINCT customer_sk)
+    comment: Distinct customers in trailing 7-day window
+    display_name: Trailing 7-Day Customers
+    window:
+      - order: transaction_date
+        range: trailing 7 day
+        semiadditive: last
+
+  # --- Current-day revenue (for period-over-period) ---
+  - name: current_day_revenue
+    expr: SUM(net_revenue_usd)
+    comment: Net revenue for the current day only
+    display_name: Current Day Revenue
+    window:
+      - order: transaction_date
+        range: current
+        semiadditive: last
+
+  # --- Previous-day revenue ---
+  - name: previous_day_revenue
+    expr: SUM(net_revenue_usd)
+    comment: Net revenue for the previous day
+    display_name: Previous Day Revenue
+    window:
+      - order: transaction_date
+        range: trailing 1 day
+        semiadditive: last
+
+  # --- Day-over-day growth (composed + window) ---
+  - name: day_over_day_growth
+    expr: (MEASURE(current_day_revenue) - MEASURE(previous_day_revenue)) / MEASURE(previous_day_revenue) * 100
+    comment: Day-over-day revenue growth percentage
+    display_name: Day-over-Day Growth %
+    format:
+      type: percentage
+      decimal_places:
+        type: exact
+        places: 2
+    synonyms:
+      - dod growth
+
+  # --- Cumulative (running total) revenue ---
+  - name: cumulative_revenue
+    expr: SUM(net_revenue_usd)
+    comment: Running total of net revenue over time
+    display_name: Cumulative Revenue
+    format:
+      type: currency
+      currency_code: USD
+      decimal_places:
+        type: exact
+        places: 2
+    window:
+      - order: transaction_date
+        range: cumulative
+        semiadditive: last
+
+  # --- Year-to-date revenue (period-to-date with two windows) ---
+  - name: ytd_revenue
+    expr: SUM(net_revenue_usd)
+    comment: Year-to-date cumulative net revenue, resets each year
+    display_name: YTD Revenue
+    format:
+      type: currency
+      currency_code: USD
+      decimal_places:
+        type: exact
+        places: 2
+    synonyms:
+      - year to date revenue
+    window:
+      - order: transaction_date
+        range: cumulative
+        semiadditive: last
+      - order: transaction_year
+        range: current
+        semiadditive: last
