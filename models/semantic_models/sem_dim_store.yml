@@ -9,7 +9,7 @@ semantic_models:
     description: >
       Store dimension semantic model. Provides store, region, country, and
       format attributes for slicing sales metrics.
-    model: source('ebi_semantic_poc', 'sem_poc_dim_store')
+    model: source('src_ebi_semantic_poc', 'sem_poc_dim_store')
 
     entities:
       - name: store
