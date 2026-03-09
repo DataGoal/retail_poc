@@ -1,12 +1,11 @@
 # =============================================================================
 # Metrics — Retail Sales
 #
-# These map to the "composed measures" and "window measures" sections of the
-# Databricks metric view. In dbt, composed logic uses derived or ratio metric
-# types, and window/rolling logic uses cumulative metrics.
+# Maps to Databricks "composed measures" (MEASURE() references) and
+# "window measures" (trailing, cumulative, YTD, day-over-day).
 #
-# NOTE: The atomic measures with create_metric: true in the semantic model are
-# automatically exposed as simple metrics. This file defines the advanced ones.
+# Atomic measures with create_metric: true in the semantic model are
+# automatically exposed as simple metrics. This file defines advanced ones.
 # =============================================================================
 metrics:
 
@@ -14,7 +13,6 @@ metrics:
   # DERIVED METRICS — Composability (maps to MEASURE() references)
   # ========================================================================
 
-  # --- Gross Margin = net revenue - COGS ---
   - name: gross_margin
     description: "Gross margin = total net revenue minus total COGS."
     label: Gross Margin
@@ -25,7 +23,6 @@ metrics:
         - name: total_net_revenue
         - name: total_cogs
 
-  # --- Gross Margin % = (revenue - COGS) / revenue * 100 ---
   - name: gross_margin_pct
     description: "Gross margin as a percentage of net revenue."
     label: Gross Margin %
@@ -36,7 +33,6 @@ metrics:
         - name: total_net_revenue
         - name: total_cogs
 
-  # --- Avg Order Value = revenue / transaction count ---
   - name: avg_order_value
     description: "Average revenue per transaction."
     label: Avg Order Value
@@ -47,7 +43,6 @@ metrics:
         - name: total_net_revenue
         - name: transaction_count
 
-  # --- Avg Selling Price = revenue / quantity ---
   - name: avg_selling_price
     description: "Average selling price per unit."
     label: Avg Selling Price
@@ -58,7 +53,6 @@ metrics:
         - name: total_net_revenue
         - name: total_quantity
 
-  # --- Discount Rate = discount / gross revenue ---
   - name: discount_rate
     description: "Discount as a share of gross revenue."
     label: Discount Rate
@@ -69,7 +63,6 @@ metrics:
         - name: total_discount
         - name: total_gross_revenue
 
-  # --- Return Rate = return txns / total txns ---
   - name: return_rate
     description: "Share of transactions that are returns."
     label: Return Rate
@@ -86,8 +79,6 @@ metrics:
   # CUMULATIVE METRICS — Window measures
   # ========================================================================
 
-  # --- Trailing 7-day revenue ---
-  # Maps to: window trailing 7 day
   - name: trailing_7d_revenue
     description: "Rolling 7-day trailing net revenue."
     label: Trailing 7-Day Revenue
@@ -96,7 +87,6 @@ metrics:
       measure: total_net_revenue
       window: 7 days
 
-  # --- Trailing 7-day unique customers ---
   - name: trailing_7d_customers
     description: "Distinct customers in trailing 7-day window."
     label: Trailing 7-Day Customers
@@ -105,18 +95,13 @@ metrics:
       measure: unique_customers
       window: 7 days
 
-  # --- Cumulative (running total) revenue ---
-  # Maps to: window cumulative (all time)
   - name: cumulative_revenue
     description: "Running total of net revenue over all time."
     label: Cumulative Revenue
     type: cumulative
     type_params:
       measure: total_net_revenue
-      # No window = all-time cumulative
 
-  # --- Year-to-date revenue ---
-  # Maps to: window cumulative + current year
   - name: ytd_revenue
     description: "Year-to-date cumulative net revenue, resets each year."
     label: YTD Revenue
@@ -126,12 +111,9 @@ metrics:
       grain_to_date: year
 
   # ========================================================================
-  # DERIVED METRICS — Period-over-period (window + composed)
+  # DERIVED METRICS — Period-over-period
   # ========================================================================
 
-  # --- Day-over-day revenue growth ---
-  # Maps to: (current_day_revenue - previous_day_revenue) / previous_day_revenue
-  # Uses offset_window to shift the metric by 1 day.
   - name: day_over_day_growth
     description: "Day-over-day revenue growth percentage."
     label: Day-over-Day Growth %

@@ -1,6 +1,6 @@
 # =============================================================================
 # Saved Queries — Pre-built metric queries for dashboards and exports
-# These can be executed via: dbt sl query --saved-query <name>
+# Execute via: dbt sl query --saved-query <name>
 # =============================================================================
 saved_queries:
   - name: daily_sales_summary

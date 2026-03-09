@@ -1,15 +1,15 @@
 # =============================================================================
 # Semantic Model — Dim Product
 #
-# Maps to: Databricks metric view product dimensions (division_name,
-# category_name, product_name, gender_target) accessed via the "product" join.
+# Points directly to the source table. MetricFlow links to the fact semantic
+# model via the shared "product" entity name.
 # =============================================================================
 semantic_models:
   - name: dim_product
     description: >
       Product dimension semantic model. Provides division, category, product,
       and gender target attributes for slicing sales metrics.
-    model: ref('stg_dim_product')
+    model: source('ebi_semantic_poc', 'sem_poc_dim_product')
 
     entities:
       - name: product

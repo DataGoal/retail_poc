@@ -1,0 +1,47 @@
+version: 2
+
+sources:
+  - name: ebi_semantic_poc
+    database: development
+    schema: dev_cf_ebi_semantic_poc
+    description: >
+      Nike retail POC star schema tables in Databricks Unity Catalog.
+
+    tables:
+      # ── Fact Tables ──
+      - name: sem_poc_fact_sales_transactions
+        description: Fact table containing retail sales transaction line items.
+
+      - name: sem_poc_fact_inventory_snapshot
+        description: Daily inventory snapshot per product/store.
+
+      - name: sem_poc_fact_returns
+        description: Product return transactions.
+
+      - name: sem_poc_fact_web_sessions
+        description: Web session activity for digital analytics.
+
+      # ── Dimension Tables ──
+      - name: sem_poc_dim_store
+        description: Store dimension with geography and format attributes.
+
+      - name: sem_poc_dim_product
+        description: Product dimension with hierarchy and lifecycle attributes.
+
+      - name: sem_poc_dim_customer
+        description: Customer dimension with loyalty and segmentation attributes.
+
+      - name: sem_poc_dim_channel
+        description: Channel dimension for sales channel classification.
+
+      - name: sem_poc_dim_date
+        description: Date/calendar dimension.
+
+      - name: sem_poc_dim_employee
+        description: Employee dimension.
+
+      - name: sem_poc_dim_geography
+        description: Geography hierarchy dimension.
+
+      - name: sem_poc_dim_promotion
+        description: Promotion and campaign dimension.

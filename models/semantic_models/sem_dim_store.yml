@@ -1,16 +1,15 @@
 # =============================================================================
 # Semantic Model — Dim Store
 #
-# Maps to: Databricks metric view store dimensions (store_name, region_name,
-# country_name, store_format) accessed via the "store" join.
-# MetricFlow links this to the fact via the shared "store" entity.
+# Points directly to the source table. MetricFlow links to the fact semantic
+# model via the shared "store" entity name.
 # =============================================================================
 semantic_models:
   - name: dim_store
     description: >
       Store dimension semantic model. Provides store, region, country, and
       format attributes for slicing sales metrics.
-    model: ref('stg_dim_store')
+    model: source('ebi_semantic_poc', 'sem_poc_dim_store')
 
     entities:
       - name: store
@@ -45,8 +44,10 @@ semantic_models:
 
       - name: city
         type: categorical
+        description: City where the store is located.
         expr: city
 
       - name: is_digital
         type: categorical
+        description: Whether the store is a digital channel.
         expr: is_digital

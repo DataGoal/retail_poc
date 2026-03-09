@@ -1,22 +1,22 @@
 # =============================================================================
 # Semantic Model — Fact Sales Transactions
 #
-# Maps to: Databricks metric view "source" + atomic "measures"
-# MetricFlow joins dim_store and dim_product via foreign entities (store_sk,
-# product_sk) — equivalent to the Databricks "joins" section.
+# Points directly to the source table in Databricks — no staging model needed.
+# Derived expressions (transaction_date, revenue_tier) are handled inline
+# via dimension expr: fields, same as the Databricks metric view approach.
 # =============================================================================
 semantic_models:
   - name: fact_sales_transactions
     description: >
-      Core retail sales semantic model built on stg_fact_sales_transactions.
-      Measures defined here are building blocks for downstream metrics.
-    model: ref('stg_fact_sales_transactions')
+      Core retail sales semantic model. Measures defined here are building
+      blocks for downstream metrics. Joins to dim_store and dim_product
+      happen automatically via shared entity names.
+    model: source('ebi_semantic_poc', 'sem_poc_fact_sales_transactions')
 
     defaults:
       agg_time_dimension: transaction_date
 
     # ── Entities (join keys) ────────────────────────────────────────────────
-    # primary = this table's grain; foreign = FK to dimension semantic models
     entities:
       - name: transaction
         type: primary
@@ -35,29 +35,34 @@ semantic_models:
         expr: customer_sk
 
     # ── Dimensions ──────────────────────────────────────────────────────────
-    # Time dimensions must specify type: time
-    # Categorical dimensions derived from fact columns
     dimensions:
+      # --- Date dimensions (derived inline from surrogate key) ---
       - name: transaction_date
         type: time
         description: Date of the sales transaction.
-        expr: transaction_date
+        expr: "to_date(cast(transaction_date_sk as string), 'yyyyMMdd')"
         type_params:
           time_granularity: day
 
       - name: transaction_year
         type: time
         description: Year of the transaction (for YTD windows).
-        expr: transaction_year
+        expr: "date_trunc('year', to_date(cast(transaction_date_sk as string), 'yyyyMMdd'))"
         type_params:
           time_granularity: year
 
+      # --- Derived CASE dimension ---
       - name: revenue_tier
         type: categorical
         description: >
           Revenue tier classification per transaction line:
           High-Value (>500), Mid-Value (>100), Low-Value.
-        expr: revenue_tier
+        expr: |
+          case
+            when net_revenue_usd > 500 then 'High-Value'
+            when net_revenue_usd > 100 then 'Mid-Value'
+            else 'Low-Value'
+          end
 
       - name: return_flag
         type: categorical
@@ -65,8 +70,6 @@ semantic_models:
         expr: return_flag
 
     # ── Measures (building blocks for metrics) ──────────────────────────────
-    # These map to the "atomic measures" in your Databricks metric view.
-    # Each measure becomes queryable as a simple metric via create_metric.
     measures:
       # --- Revenue measures ---
       - name: total_net_revenue
@@ -112,8 +115,7 @@ semantic_models:
         expr: customer_sk
         create_metric: true
 
-      # --- Conditional measure (FILTER clause) ---
-      # Maps to: COUNT(DISTINCT transaction_id) FILTER (WHERE return_flag = 'Y')
+      # --- Conditional measure (return transactions only) ---
       - name: return_transactions
         description: Count of transactions that were returns.
         agg: count_distinct
