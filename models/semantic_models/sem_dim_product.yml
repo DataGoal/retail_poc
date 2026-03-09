@@ -1,0 +1,48 @@
+# =============================================================================
+# Semantic Model — Dim Product
+#
+# Maps to: Databricks metric view product dimensions (division_name,
+# category_name, product_name, gender_target) accessed via the "product" join.
+# =============================================================================
+semantic_models:
+  - name: dim_product
+    description: >
+      Product dimension semantic model. Provides division, category, product,
+      and gender target attributes for slicing sales metrics.
+    model: ref('stg_dim_product')
+
+    entities:
+      - name: product
+        type: primary
+        expr: product_sk
+
+    dimensions:
+      - name: division_name
+        type: categorical
+        description: Business division (e.g., Apparel, Footwear).
+        expr: division_name
+
+      - name: category_name
+        type: categorical
+        description: Product category.
+        expr: category_name
+
+      - name: subcategory_name
+        type: categorical
+        description: Product subcategory.
+        expr: subcategory_name
+
+      - name: product_name
+        type: categorical
+        description: Product name / item.
+        expr: product_name
+
+      - name: gender_target
+        type: categorical
+        description: Target gender for the product.
+        expr: gender_target
+
+      - name: sport_occasion
+        type: categorical
+        description: Sport or occasion the product targets.
+        expr: sport_occasion

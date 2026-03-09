@@ -1,0 +1,35 @@
+# =============================================================================
+# Saved Queries — Pre-built metric queries for dashboards and exports
+# These can be executed via: dbt sl query --saved-query <name>
+# =============================================================================
+saved_queries:
+  - name: daily_sales_summary
+    description: >
+      Daily sales overview with revenue, margin, and volume KPIs
+      by store region and product category.
+    query_params:
+      metrics:
+        - total_net_revenue
+        - gross_margin
+        - gross_margin_pct
+        - transaction_count
+        - total_quantity
+        - avg_order_value
+      group_by:
+        - TimeDimension('transaction__transaction_date', 'day')
+        - Dimension('store__region_name')
+        - Dimension('product__category_name')
+
+  - name: weekly_performance
+    description: >
+      Weekly rollup with trailing 7-day metrics and YTD revenue.
+    query_params:
+      metrics:
+        - total_net_revenue
+        - trailing_7d_revenue
+        - trailing_7d_customers
+        - ytd_revenue
+        - return_rate
+      group_by:
+        - TimeDimension('transaction__transaction_date', 'week')
+        - Dimension('store__region_name')

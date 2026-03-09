@@ -1,0 +1,121 @@
+# =============================================================================
+# Semantic Model — Fact Sales Transactions
+#
+# Maps to: Databricks metric view "source" + atomic "measures"
+# MetricFlow joins dim_store and dim_product via foreign entities (store_sk,
+# product_sk) — equivalent to the Databricks "joins" section.
+# =============================================================================
+semantic_models:
+  - name: fact_sales_transactions
+    description: >
+      Core retail sales semantic model built on stg_fact_sales_transactions.
+      Measures defined here are building blocks for downstream metrics.
+    model: ref('stg_fact_sales_transactions')
+
+    defaults:
+      agg_time_dimension: transaction_date
+
+    # ── Entities (join keys) ────────────────────────────────────────────────
+    # primary = this table's grain; foreign = FK to dimension semantic models
+    entities:
+      - name: transaction
+        type: primary
+        expr: transaction_sk
+
+      - name: store
+        type: foreign
+        expr: store_sk
+
+      - name: product
+        type: foreign
+        expr: product_sk
+
+      - name: customer
+        type: foreign
+        expr: customer_sk
+
+    # ── Dimensions ──────────────────────────────────────────────────────────
+    # Time dimensions must specify type: time
+    # Categorical dimensions derived from fact columns
+    dimensions:
+      - name: transaction_date
+        type: time
+        description: Date of the sales transaction.
+        expr: transaction_date
+        type_params:
+          time_granularity: day
+
+      - name: transaction_year
+        type: time
+        description: Year of the transaction (for YTD windows).
+        expr: transaction_year
+        type_params:
+          time_granularity: year
+
+      - name: revenue_tier
+        type: categorical
+        description: >
+          Revenue tier classification per transaction line:
+          High-Value (>500), Mid-Value (>100), Low-Value.
+        expr: revenue_tier
+
+      - name: return_flag
+        type: categorical
+        description: Whether the transaction is a return (Y/N).
+        expr: return_flag
+
+    # ── Measures (building blocks for metrics) ──────────────────────────────
+    # These map to the "atomic measures" in your Databricks metric view.
+    # Each measure becomes queryable as a simple metric via create_metric.
+    measures:
+      # --- Revenue measures ---
+      - name: total_net_revenue
+        description: Total net revenue in USD across all transactions.
+        agg: sum
+        expr: net_revenue_usd
+        create_metric: true
+
+      - name: total_gross_revenue
+        description: Total gross revenue before discounts.
+        agg: sum
+        expr: gross_revenue
+        create_metric: true
+
+      - name: total_cogs
+        description: Total cost of goods sold.
+        agg: sum
+        expr: cost_of_goods_sold
+        create_metric: true
+
+      - name: total_discount
+        description: Total discount amount given.
+        agg: sum
+        expr: discount_amount
+        create_metric: true
+
+      # --- Volume measures ---
+      - name: total_quantity
+        description: Total units sold.
+        agg: sum
+        expr: quantity_sold
+        create_metric: true
+
+      - name: transaction_count
+        description: Distinct number of transactions.
+        agg: count_distinct
+        expr: transaction_id
+        create_metric: true
+
+      - name: unique_customers
+        description: Distinct customer count.
+        agg: count_distinct
+        expr: customer_sk
+        create_metric: true
+
+      # --- Conditional measure (FILTER clause) ---
+      # Maps to: COUNT(DISTINCT transaction_id) FILTER (WHERE return_flag = 'Y')
+      - name: return_transactions
+        description: Count of transactions that were returns.
+        agg: count_distinct
+        expr: transaction_id
+        create_metric: true

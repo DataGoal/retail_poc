@@ -1,0 +1,16 @@
+# =============================================================================
+# Connection Profile — Update with your Databricks workspace credentials
+# In dbt Cloud this is configured via the UI, not this file.
+# For local development only.
+# =============================================================================
+retail_sales_semantic_poc:
+  target: dev
+  outputs:
+    dev:
+      type: databricks
+      catalog: development
+      schema: dev_cf_ebi_semantic_poc
+      host: "{{ env_var('DBT_DATABRICKS_HOST') }}"
+      http_path: "{{ env_var('DBT_DATABRICKS_HTTP_PATH') }}"
+      token: "{{ env_var('DBT_DATABRICKS_TOKEN') }}"
+      threads: 4

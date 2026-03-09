@@ -1,0 +1,13 @@
+version: 2
+
+models:
+  - name: stg_fact_sales_transactions
+    description: >
+      Staged fact table for retail sales. Adds derived transaction_date,
+      transaction_year, and revenue_tier columns from the raw surrogate keys.
+
+  - name: stg_dim_store
+    description: Store dimension passthrough.
+
+  - name: stg_dim_product
+    description: Product dimension passthrough.
