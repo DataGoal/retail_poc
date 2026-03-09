@@ -9,7 +9,7 @@ semantic_models:
     description: >
       Product dimension semantic model. Provides division, category, product,
       and gender target attributes for slicing sales metrics.
-    model: source('ebi_semantic_poc', 'sem_poc_dim_product')
+    model: source('src_ebi_semantic_poc', 'sem_poc_dim_product')
 
     entities:
       - name: product

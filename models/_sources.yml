@@ -1,7 +1,7 @@
 version: 2
 
 sources:
-  - name: ebi_semantic_poc
+  - name: src_ebi_semantic_poc
     database: development
     schema: dev_cf_ebi_semantic_poc
     description: >

@@ -11,7 +11,7 @@ semantic_models:
       Core retail sales semantic model. Measures defined here are building
       blocks for downstream metrics. Joins to dim_store and dim_product
       happen automatically via shared entity names.
-    model: source('ebi_semantic_poc', 'sem_poc_fact_sales_transactions')
+    model: source('src_ebi_semantic_poc', 'sem_poc_fact_sales_transactions')
 
     defaults:
       agg_time_dimension: transaction_date
